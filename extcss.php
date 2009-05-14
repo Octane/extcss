@@ -2,7 +2,7 @@
 class css_converter{
    function convert_file_to_css($file_name){
          $text = file($file_name);
-         $text = $this->css_convert($text);
+         $text = $this->css_main_convert($text);
          $temp = explode(".", $file_name);
          $css_file = fopen($temp[0].".css", 'w');
          foreach($text as $string){
@@ -10,14 +10,65 @@ class css_converter{
              echo $string.'<br>';
          }
    }
-   function css_convert($text){
-         $text=$this->css_standardizer($text);
-         $text=$this->css_constants($text);
-         $text=$this->css_block_nesting($text);
-         $text=$this->css_cleaning($text);
+   function css_main_convert($text){
+         $text = $this->css_standardizer($text);
+         $text = $this->css_constants($text);
+         $media = 0;
+         foreach($text as $string){
+                 if(preg_match('/@media(.*){/',$string)){
+                        $media=1;
+                        break;
+                 }
+         }
+         if($media){
+               $text = $this->css_media_convert($text);
+         }else{
+               $text = $this->css_block_nesting($text);
+         }
+         $text = $this->css_cleaning($text);
          return $text;
    }
+   function css_media_convert($text){
+         $length=count($text);
+         $z=0;
+         for($i=0;$i<$length;){
+                 $newtext[]=$text[$i];
+                 if(preg_match('/@media(.*){/',$text[$i])){
+                         while(1){
+                                 $i++;
+                                 if(preg_match('/}/',$text[$i])){
+                                         if(!$z){
+                                                 $temp_text=$this->css_block_nesting($temp_text);
+                                                 $newtext=array_merge($newtext,$temp_text);
+                                                 $newtext[]='}';
+                                                 $temp_text = array();
+                                                 $i++;
+                                                 break;
+                                         }else{
+                                                 $z--;
+                                                 $temp_text[]=$text[$i];
+                                         }
+                                 }else{
+                                         $temp_text[]=$text[$i];
+                                         if(preg_match('/{/',$text[$i]))$z++;
+                                 }
+                         }
+                 }else{
+                         $i++;
+                 }
+         }
+         return $newtext;
+   }
    function css_standardizer($text){
+         foreach($text as $string){
+                 if(preg_match('/;/',$string)){
+                    $temp = explode(";", $string);
+                    $newtext[]=$temp[0].';';
+                    $newtext[]=$temp[1];
+                 }else $newtext[]= $string;
+         }
+         $text=$newtext;
+         $newtext = array();
          foreach($text as $string){
                  if(preg_match('/{/',$string)){
                     $temp = explode("{", $string);
@@ -25,21 +76,25 @@ class css_converter{
                     $newtext[]=$temp[1];
                  }else $newtext[]= $string;
          }
-         foreach($newtext as $string){
+         $text=$newtext;
+         $newtext = array();
+         foreach($text as $string){
                  if(preg_match('/}/',$string)){
                     $temp = explode("}", $string);
-                    $newtext_temp[]=$temp[0];
-                    $newtext_temp[]='}';
-                    $newtext_temp[]=$temp[1];
-                 }else $newtext_temp[]= $string;
+                    $newtext[]=$temp[0];
+                    $newtext[]='}';
+                    $newtext[]=$temp[1];
+                 }else $newtext[]= $string;
          }
-         foreach($newtext_temp as $string){
+         $text=$newtext;
+         $newtext = array();
+         foreach($text as $string){
                 if(preg_match('/[^\s]/',$string)){
                 preg_match_all('/(\s*)(.*)(\s*)/',$string,$temp, PREG_SET_ORDER);
-                $ready_text[]= $temp[0][2];
+                $newtext[]= $temp[0][2];
                 }
          }
-         return $ready_text;
+         return $newtext;
    }
    function css_constants($text){
          for($i=0; $i<count($text); $i++){
@@ -55,21 +110,22 @@ class css_converter{
                         }
                         $i++;
                  }
-              for($t=0; $t<$begin_vars; $t++){
+                 for($t=0; $t<$begin_vars; $t++){
                       $newtext[]=$text[$t];
-              }
-              for($t=++$i; $t<count($text); $t++){
+                 }
+                 for($t=++$i; $t<count($text); $t++){
                       $newtext[]=$text[$t];
-              }
-              foreach($vars as $var){
+                 }
+                 foreach($vars as $var){
                       foreach($newtext as $key=>$str){
                               $newtext[$key]=preg_replace("/([:,]\s*)(\\$var[0])(\s*[;,])/U","$1 $var[1]$3",$str);
                       }
-              }
-              break;
+                 }
+
+                 return $newtext;
               }
          }
-         return $newtext;
+         return $text;
    }
    function css_block_nesting($text){
          $length=count($text);
@@ -138,7 +194,11 @@ class css_converter{
          $temp_s = explode(",", $names[1]);
          foreach($temp_s as $sname){
                   foreach($temp_p as $pname){
-                       $name.=$pname.' '.$sname.', ';
+                       if(preg_match('/&:/',$sname)){
+                          $sname=preg_replace("/&/",'',$sname);
+                          $pname=rtrim($pname);
+                          $name.=$pname.$sname.', ';
+                       }else $name.=$pname.' '.$sname.', ';
                   }
          }
          preg_match_all('/(.*),/',$name,$temp,PREG_SET_ORDER);
