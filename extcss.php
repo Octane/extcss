@@ -19,7 +19,7 @@ class css_converter {
                                  //echo $string.'<br />';
                          }
                  } else {
-                        echo "File \"$file_name\" Not Found!";
+                        echo "File \"$file_name\" not found!";
                  }
         }
 
@@ -48,7 +48,7 @@ class css_converter {
                                         $temp = file($temp);
                                         $newtext = array_merge($newtext, $this->css_main_convert($temp));
                                 }else {
-                                        $newtext[]= "/* File \"$temp\" Not Found! */";
+                                        $newtext[]= "/* File \"$temp\" not found! */";
                                 }
                         } else {
                                 $newtext[]=$string;
@@ -157,9 +157,6 @@ class css_converter {
                                 $newtext[]=$text[$i];
                         }
                 }
-                foreach($newtext as $string) {
-                                 echo $string.'<br />';
-                         }
                 return $newtext;
         }
 
