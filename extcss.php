@@ -6,7 +6,7 @@
  * More information: http://www.extcss.com/
  */
 class css_converter {
-
+        
         function convert_file_to_css($file_name) {
                 if (file_exists($file_name)){
                         $text = file($file_name);
@@ -89,9 +89,32 @@ class css_converter {
                 }
                 return $newtext;
         }
-
+        
+        var $strings;
+        
         function css_standardizer($text) {
-                $text = $this->css_coding_special_symbols($text);
+                $i = 0;
+                foreach($text as $key => $str) {
+                        if(preg_match_all("/['|\"](.*)['|\"]/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
+                                foreach($temp_vars as $vars){
+                                        $this->strings[$i] = $vars[0];
+                                        $text[$key] = preg_replace("/(['|\"])$vars[1](['|\"])/U", "temp_strings[$i]", $text[$key],1);
+                                        $i++;
+                                }
+                                $newtext[]=$text[$key];
+                        }elseif(preg_match_all("/url\((.*)\)/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
+                                foreach($temp_vars as $vars){
+                                        $this->strings[$i] = $vars[0];
+                                        $text[$key] = preg_replace("/url\((.*)\)/U", "temp_strings[$i]", $text[$key],1);
+                                        $i++;
+                                }
+                                $newtext[]=$text[$key];
+                        }else{
+                                $newtext[]=$text[$key];
+                        }
+                }
+                $text = $newtext;
+                $newtext = array();
                 foreach($text as $key => $str) {
                         $text[$key] = preg_replace('/\/\*(.*)\*\//', '', $text[$key]);
                 }
@@ -178,44 +201,6 @@ class css_converter {
                                 }
                         }else{
                                 $newtext[]=$text[$i];
-                        }
-                }
-                return $newtext;
-        }
-        
-        function css_coding_special_symbols($text){
-                foreach($text as $key => $str) {
-                        if(preg_match_all("/['|\"](.*)['|\"]/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
-                                foreach($temp_vars as $vars){
-                                        $string = $vars[1];
-                                        $string = preg_replace('/{/', '/u007B', $string);
-                                        $string = preg_replace('/}/', '/u007D', $string);
-                                        $string = preg_replace('/\/\*/', '/u002F/u002A', $string);
-                                        $string = preg_replace('/\*\//', '/u002A/u002F', $string);
-                                        $string = preg_replace('/;/', '/u003B', $string);
-                                        $text[$key] = preg_replace("/(['|\"])$vars[1](['|\"])/U", "$1$string$2", $text[$key],1);
-                                }
-                                $newtext[]=$text[$key];
-                        }else{
-                                $newtext[]=$text[$key];
-                        }
-                }
-                $text = $newtext;
-                $newtext = array();
-                foreach($text as $key => $str) {
-                        if(preg_match_all("/url\((.*)\)/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
-                                foreach($temp_vars as $vars){
-                                        $string = $vars[1];
-                                        $string = preg_replace('/{/', '/u007B', $string);
-                                        $string = preg_replace('/}/', '/u007D', $string);
-                                        $string = preg_replace('/\/\*/', '/u002F/u002A', $string);
-                                        $string = preg_replace('/\*\//', '/u002A/u002F', $string);
-                                        $string = preg_replace('/;/', '/u003B', $string);
-                                        $text[$key] = preg_replace("/(url\()(.*)(\))/U", "$1$string$3", $text[$key],1);
-                                }
-                                $newtext[]=$text[$key];
-                        }else{
-                                $newtext[]=$text[$key];
                         }
                 }
                 return $newtext;
@@ -345,24 +330,12 @@ class css_converter {
         }
 
         function css_cleaning($text) {
+                $i = 0;
                 foreach($text as $key => $str) {
-                        if(preg_match_all("/['|\"](.*)['|\"]/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
-                                $string = $temp_vars[0][0];
-                                $string = preg_replace('/\/u007B/', '{', $string);
-                                $string = preg_replace('/\/u007D/', '}', $string);
-                                $string = preg_replace('/\/u002F\/u002A/', '/*', $string);
-                                $string = preg_replace('/\/u002A\/u002F/', '*/', $string);
-                                $string = preg_replace('/\/u003B/', ';', $string);
-                                $text[$key] = preg_replace("/['|\"](.*)['|\"]/U", "$string", $text[$key]);
-                        }
-                        if(preg_match_all("/url\((.*)\)/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
-                                $string = $temp_vars[0][0];
-                                $string = preg_replace('/\/u007B/', '{', $string);
-                                $string = preg_replace('/\/u007D/', '}', $string);
-                                $string = preg_replace('/\/u002F\/u002A/', '/*', $string);
-                                $string = preg_replace('/\/u002A\/u002F/', '*/', $string);
-                                $string = preg_replace('/\/u003B/', ';', $string);
-                                $text[$key] = preg_replace("/url\((.*)\)/U", "$string", $text[$key]);
+                        if(preg_match("/temp_strings\[$i\]/", $text[$key])){
+                                $temp = $this->strings[$i];
+                                $text[$key] = preg_replace("/temp_strings\[$i\]/", "$temp", $text[$key]);
+                                $i++;
                         }
                 }
                 foreach($text as $key => $str) {
@@ -377,6 +350,7 @@ class css_converter {
                                 $i++;
                         }
                 }
+                $this->strings = array();
                 return $newtext;
         }
 }
