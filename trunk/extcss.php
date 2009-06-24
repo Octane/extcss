@@ -6,6 +6,9 @@
  * More information: http://www.extcss.com/
  */
 class css_converter {
+        var $strings = array();
+        var $ready_text = array();
+        var $work_text = array();
         
         function convert_file_to_css($file_name) {
                 if (file_exists($file_name)){
@@ -25,32 +28,36 @@ class css_converter {
         function css_main_convert($text) {
                 $text = $this->css_standardizer($text);
                 $text = $this->css_constants($text);
-                $media = 0;
                 $newtext = array();
                 foreach($text as $string) {
-                        if(preg_match('/@media(.*){/', $string)) {
-                                $media = 1;
+                        if(preg_match('/@media(.*){/', $string) || preg_match('/@font-face\s*{/', $string)) {
+                                $media = true;
                                 break;
                         }
                 }
                 if($media) {
                         $text = $this->css_media_convert($text);
                 } else {
-                        $text = $this->css_block_nesting($text);
+                        while(!$triger){
+                                $triger = $this->css_block_nesting($text);
+                                $text = $this->work_text;
+                        }
+                        $text = $this->ready_text;
+                        $this->ready_text = array();
+                        $this->work_text = array();
                 }
                 $text = $this->css_cleaning($text);
                 foreach($text as $string) {
-                        if(preg_match('/@import_extcss \"(.*)\";/', $string)) {
-                                preg_match_all('/@import_extcss \"(.*)\";/', $string, $temp, PREG_SET_ORDER);
+                        if(preg_match_all('/@import_extcss \"(.*)\";/', $string, $temp, PREG_SET_ORDER)) {
                                 $temp = $temp[0][1];
                                 if (file_exists($temp)){
                                         $temp = file($temp);
                                         $newtext = array_merge($newtext, $this->css_main_convert($temp));
                                 }else {
-                                        $newtext[]= "/* File \"$temp\" not found! */";
+                                        $newtext[] = "/* File \"$temp\" not found! */";
                                 }
                         } else {
-                                $newtext[]=$string;
+                                $newtext[] = $string;
                         }
                 }
                 return $newtext;
@@ -61,12 +68,18 @@ class css_converter {
                 $z = 0;
                 for($i = 0; $i < $length;) {
                         $newtext[] = $text[$i];
-                        if(preg_match('/@media(.*){/', $text[$i])) {
+                        if(preg_match('/@media(.*){/', $text[$i]) || preg_match('/@font-face\s*{/', $text[$i])) {
                                 while(1) {
                                         $i++;
                                         if(preg_match('/}/', $text[$i])) {
                                                 if(! $z) {
-                                                        $temp_text = $this->css_block_nesting($temp_text);
+                                                        while(!$triger){
+                                                                $triger = $this->css_block_nesting($temp_text);
+                                                                $temp_text = $this->work_text;
+                                                        }
+                                                        $temp_text = $this->ready_text;
+                                                        $this->ready_text = array();
+                                                        $this->work_text = array();
                                                         $newtext = array_merge($newtext, $temp_text);
                                                         $newtext[] = '}';
                                                         $temp_text = array();
@@ -90,33 +103,27 @@ class css_converter {
                 return $newtext;
         }
         
-        var $strings;
-        
         function css_standardizer($text) {
                 $i = 0;
                 foreach($text as $key => $str) {
-                        if(preg_match_all("/['|\"](.*)['|\"]/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
+                        if(preg_match_all("/['|\"](.*)['|\"]/U", $str, $temp_vars, PREG_SET_ORDER)){
                                 foreach($temp_vars as $vars){
                                         $this->strings[$i] = $vars[0];
-                                        $text[$key] = preg_replace("/(['|\"])$vars[1](['|\"])/U", "temp_strings[$i]", $text[$key],1);
+                                        $temp = preg_quote($vars[1]);
+                                        $text[$key] = preg_replace("/(['|\"])$temp(['|\"])/U", "temp_strings[$i]", $text[$key],1);
                                         $i++;
                                 }
-                                $newtext[]=$text[$key];
-                        }elseif(preg_match_all("/url\((.*)\)/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
+                        }
+                        if(preg_match_all("/url\((.*)\)/U", $str, $temp_vars, PREG_SET_ORDER)){
                                 foreach($temp_vars as $vars){
                                         $this->strings[$i] = $vars[0];
                                         $text[$key] = preg_replace("/url\((.*)\)/U", "temp_strings[$i]", $text[$key],1);
                                         $i++;
                                 }
-                                $newtext[]=$text[$key];
-                        }else{
-                                $newtext[]=$text[$key];
                         }
                 }
-                $text = $newtext;
-                $newtext = array();
                 foreach($text as $key => $str) {
-                        $text[$key] = preg_replace('/\/\*(.*)\*\//', '', $text[$key]);
+                        $text[$key] = preg_replace('/\/\*(.*)\*\//', '', $str);
                 }
                 $length = count($text);
                 for($i = 0; $i < $length; $i++){
@@ -285,19 +292,21 @@ class css_converter {
                                 }
                                 if($recompile){
                                         for($j=$j_begin;$j<$j_temp_begin;$j++){
-                                                $newtext[] = $text[$j];
+                                                $worktext[] = $text[$j];
                                         }
                                         for($j=$j_temp_end+1;$j<=$j_end;$j++){
-                                                $newtext[] = $text[$j];
+                                                $worktext[] = $text[$j];
                                         }
                                         $newtext[] = $this->css_getnames($names).'{';
                                         for($j=$j_temp_begin+1;$j<=$j_temp_end;$j++){
-                                                $newtext[] = $text[$j];
+                                                $worktext[] = $text[$j];
                                         }
                                         for($j=$j_end+1; $j < $length; $j++) {
-                                                $newtext[] = $text[$j];
+                                                $worktext[] = $text[$j];
                                         }
-                                        return $this->css_block_nesting($newtext);
+                                        $this->ready_text = array_merge($this->ready_text, $newtext);
+                                        $this->work_text = $worktext;
+                                        return false;
                                 }else{
                                         for($j=$j_begin;$j<=$j_end;$j++){
                                                 $newtext[] = $text[$j];
@@ -308,7 +317,8 @@ class css_converter {
                                 $j++;
                         }
                 }
-                return $newtext;
+                $this->ready_text = array_merge($this->ready_text, $newtext);
+                return true;
         }
 
         function css_getnames($names) {
@@ -330,25 +340,24 @@ class css_converter {
         }
 
         function css_cleaning($text) {
-                $i = 0;
-                foreach($text as $key => $str) {
-                        if(preg_match("/temp_strings\[$i\]/", $text[$key])){
-                                $temp = $this->strings[$i];
-                                $text[$key] = preg_replace("/temp_strings\[$i\]/", "$temp", $text[$key]);
-                                $i++;
-                        }
-                }
-                foreach($text as $key => $str) {
-                        $text[$key] = preg_replace('/\s+/', ' ', $text[$key]);
-                        $text[$key] = preg_replace('/\s,/U', ',', $text[$key]);
-                }
                 for($i = 0; $i < count($text);) {
                         if(preg_match('/{/', $text[$i]) && preg_match('/}/', $text[$i + 1])) {
                                 $i += 2;
                         } else {
-                                $newtext[] = $text[$i]."\n";
+                                $newtext[] = $text[$i];
                                 $i++;
                         }
+                }
+                $i = 0;
+                foreach($newtext as $key => $str) {
+                        $newtext[$key] = preg_replace('/\s+/', ' ', $newtext[$key]);
+                        $newtext[$key] = preg_replace('/\s,/', ',', $newtext[$key]);
+                        if(preg_match("/temp_strings\[$i\]/", $newtext[$key])){
+                                $temp = $this->strings[$i];
+                                $newtext[$key] = preg_replace("/temp_strings\[$i\]/", "$temp", $newtext[$key]);
+                                $i++;
+                        }
+                        $newtext[$key].="\n";
                 }
                 $this->strings = array();
                 return $newtext;
