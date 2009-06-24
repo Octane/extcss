@@ -1,26 +1,25 @@
-<?php
+﻿<?php
 /**
  * Ext CSS Converter
  * Copyright (c) 2009 Nikolai Gerasimov
  * Released under the MIT License (MIT-LICENSE.txt).
  * More information: http://www.extcss.com/
  */
-
 class css_converter {
 
         function convert_file_to_css($file_name) {
-                 if (file_exists($file_name)){
-                         $text = file($file_name);
-                         $text = $this->css_main_convert($text);
-                         $file_name = preg_replace('/(ext-)(.*)/', "$2", $file_name);
-                         $css_file = fopen($file_name, 'w');
-                         foreach($text as $string) {
-                                 fwrite($css_file, $string);
-                                 //echo $string.'<br />';
-                         }
-                 } else {
+                if (file_exists($file_name)){
+                        $text = file($file_name);
+                        $text = $this->css_main_convert($text);
+                        $file_name = preg_replace('/(ext-)(.*)/', "$2", $file_name);
+                        $css_file = fopen($file_name, 'w');
+                        foreach($text as $string) {
+                                fwrite($css_file, $string);
+                                echo $string.'<br />';
+                        }
+                } else {
                         echo "File \"$file_name\" not found!";
-                 }
+                }
         }
 
         function css_main_convert($text) {
@@ -92,11 +91,35 @@ class css_converter {
         }
 
         function css_standardizer($text) {
+                $text = $this->css_coding_special_symbols($text);
+                foreach($text as $key => $str) {
+                        $text[$key] = preg_replace('/\/\*(.*)\*\//', '', $text[$key]);
+                }
+                $length = count($text);
+                for($i = 0; $i < $length; $i++){
+                        if(preg_match('/\/\*/', $text[$i])){
+                                $newtext[] = preg_replace('/\/\*(.*)/', '', $text[$i]);
+                                while($i < $length){
+                                        $i++;
+                                        if(preg_match('/\*\//', $text[$i])){
+                                                $newtext[] = preg_replace('/(.*)\*\//', '', $text[$i]);
+                                                break;
+                                        }
+                                }
+                        }else{
+                                $newtext[]=$text[$i];
+                        }
+                }
+                $text = $newtext;
+                $newtext = array();
                 foreach($text as $string) {
                         if(preg_match('/;/', $string)) {
                                 $temp = explode(';', $string);
-                                $newtext[] = $temp[0].';';
-                                $newtext[] = $temp[1];
+                                $length = count($temp);
+                                for($i = 0; $i < $length-1; $i++){
+                                        $newtext[] = $temp[$i].';';
+                                        }
+                                $newtext[] = $temp[$length-1];
                         } else {
                                 $newtext[] = $string;
                         }
@@ -144,7 +167,7 @@ class css_converter {
                 for($i = 0; $i < $length; $i++){
                         if(preg_match('/,$/', $text[$i])){
                                 $string = $text[$i];
-                                while(1){
+                                while($i < $length){
                                         $i++;
                                         if(preg_match('/,$/', $text[$i])){
                                                 $string.= ' '.$text[$i];
@@ -159,7 +182,45 @@ class css_converter {
                 }
                 return $newtext;
         }
-
+        
+        function css_coding_special_symbols($text){
+                foreach($text as $key => $str) {
+                        if(preg_match_all("/['|\"](.*)['|\"]/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
+                                foreach($temp_vars as $vars){
+                                        $string = $vars[1];
+                                        $string = preg_replace('/{/', '/u007B', $string);
+                                        $string = preg_replace('/}/', '/u007D', $string);
+                                        $string = preg_replace('/\/\*/', '/u002F/u002A', $string);
+                                        $string = preg_replace('/\*\//', '/u002A/u002F', $string);
+                                        $string = preg_replace('/;/', '/u003B', $string);
+                                        $text[$key] = preg_replace("/(['|\"])$vars[1](['|\"])/U", "$1$string$2", $text[$key],1);
+                                }
+                                $newtext[]=$text[$key];
+                        }else{
+                                $newtext[]=$text[$key];
+                        }
+                }
+                $text = $newtext;
+                $newtext = array();
+                foreach($text as $key => $str) {
+                        if(preg_match_all("/url\((.*)\)/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
+                                foreach($temp_vars as $vars){
+                                        $string = $vars[1];
+                                        $string = preg_replace('/{/', '/u007B', $string);
+                                        $string = preg_replace('/}/', '/u007D', $string);
+                                        $string = preg_replace('/\/\*/', '/u002F/u002A', $string);
+                                        $string = preg_replace('/\*\//', '/u002A/u002F', $string);
+                                        $string = preg_replace('/;/', '/u003B', $string);
+                                        $text[$key] = preg_replace("/(url\()(.*)(\))/U", "$1$string$3", $text[$key],1);
+                                }
+                                $newtext[]=$text[$key];
+                        }else{
+                                $newtext[]=$text[$key];
+                        }
+                }
+                return $newtext;
+        }
+        
         function css_constants($text) {
                 for($i = 0; $i < count($text); $i++) {
                         if(preg_match('/^\$vars/',$text[$i])) {
@@ -207,54 +268,54 @@ class css_converter {
                                         $j++;
                                         if(preg_match('/{/', $text[$j]))$z++;
                                         if(preg_match('/}/', $text[$j])) {
-                                                             if(! $z) {
-                                                                  $j_end = $j;
-                                                                  break;
-                                                             } else {
-                                                                  $z--;
-                                                             }
+                                                if(! $z) {
+                                                        $j_end = $j;
+                                                        break;
+                                                } else {
+                                                        $z--;
+                                                }
                                         }
 
                                 }
                                 while($j>$j_begin) {
                                         $j--;
                                         if(preg_match('/}/', $text[$j])){
-                                                   $j_temp_end = $j;
-                                                   while(1){
-                                                         $j--;
-                                                         if(preg_match('/}/', $text[$j]))$z++;
-                                                         if(preg_match_all('/(.*){/U', $text[$j], $temp_vars, PREG_SET_ORDER)) {
-                                                                  if(! $z) {
-                                                                       $names[1] = $temp_vars[0][1];
-                                                                       $recompile = 1;
-                                                                       $j_temp_begin = $j;
-                                                                       break;
-                                                                  } else {
-                                                                       $z--;
-                                                                  }
-                                                         }
-                                                   }
-                                                   break;
+                                                $j_temp_end = $j;
+                                                while(1){
+                                                        $j--;
+                                                        if(preg_match('/}/', $text[$j]))$z++;
+                                                        if(preg_match_all('/(.*){/U', $text[$j], $temp_vars, PREG_SET_ORDER)) {
+                                                                if(! $z) {
+                                                                        $names[1] = $temp_vars[0][1];
+                                                                        $recompile = 1;
+                                                                        $j_temp_begin = $j;
+                                                                        break;
+                                                                } else {
+                                                                        $z--;
+                                                                }
+                                                        }
+                                                }
+                                                break;
                                         }
                                 }
                                 if($recompile){
                                         for($j=$j_begin;$j<$j_temp_begin;$j++){
-                                                 $newtext[] = $text[$j];
+                                                $newtext[] = $text[$j];
                                         }
                                         for($j=$j_temp_end+1;$j<=$j_end;$j++){
-                                                 $newtext[] = $text[$j];
+                                                $newtext[] = $text[$j];
                                         }
                                         $newtext[] = $this->css_getnames($names).'{';
                                         for($j=$j_temp_begin+1;$j<=$j_temp_end;$j++){
-                                                 $newtext[] = $text[$j];
+                                                $newtext[] = $text[$j];
                                         }
                                         for($j=$j_end+1; $j < $length; $j++) {
-                                                 $newtext[] = $text[$j];
+                                                $newtext[] = $text[$j];
                                         }
                                         return $this->css_block_nesting($newtext);
                                 }else{
                                         for($j=$j_begin;$j<=$j_end;$j++){
-                                               $newtext[] = $text[$j];
+                                                $newtext[] = $text[$j];
                                         }
                                 }
                         } else {
@@ -284,6 +345,26 @@ class css_converter {
         }
 
         function css_cleaning($text) {
+                foreach($text as $key => $str) {
+                        if(preg_match_all("/['|\"](.*)['|\"]/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
+                                $string = $temp_vars[0][0];
+                                $string = preg_replace('/\/u007B/', '{', $string);
+                                $string = preg_replace('/\/u007D/', '}', $string);
+                                $string = preg_replace('/\/u002F\/u002A/', '/*', $string);
+                                $string = preg_replace('/\/u002A\/u002F/', '*/', $string);
+                                $string = preg_replace('/\/u003B/', ';', $string);
+                                $text[$key] = preg_replace("/['|\"](.*)['|\"]/U", "$string", $text[$key]);
+                        }
+                        if(preg_match_all("/url\((.*)\)/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
+                                $string = $temp_vars[0][0];
+                                $string = preg_replace('/\/u007B/', '{', $string);
+                                $string = preg_replace('/\/u007D/', '}', $string);
+                                $string = preg_replace('/\/u002F\/u002A/', '/*', $string);
+                                $string = preg_replace('/\/u002A\/u002F/', '*/', $string);
+                                $string = preg_replace('/\/u003B/', ';', $string);
+                                $text[$key] = preg_replace("/url\((.*)\)/U", "$string", $text[$key]);
+                        }
+                }
                 foreach($text as $key => $str) {
                         $text[$key] = preg_replace('/\s+/', ' ', $text[$key]);
                         $text[$key] = preg_replace('/\s,/U', ',', $text[$key]);
