@@ -249,6 +249,7 @@ class css_converter {
         }
 
         function css_block_nesting($text) {
+                $newtext = array();
                 $length = count($text);
                 $recompile = 0;
                 $z = 0;
@@ -297,7 +298,7 @@ class css_converter {
                                         for($j=$j_temp_end+1;$j<=$j_end;$j++){
                                                 $worktext[] = $text[$j];
                                         }
-                                        $newtext[] = $this->css_getnames($names).'{';
+                                        $worktext[] = $this->css_getnames($names).'{';
                                         for($j=$j_temp_begin+1;$j<=$j_temp_end;$j++){
                                                 $worktext[] = $text[$j];
                                         }
