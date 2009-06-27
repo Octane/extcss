@@ -13,13 +13,17 @@ class css_converter {
         function convert_file_to_css($file_name) {
                 if (file_exists($file_name)){
                         $text = file($file_name);
+                        if(!count($text)){
+                                return false;
+                        }
                         $text = $this->css_main_convert($text);
                         $file_name = preg_replace('/(ext-)(.*)/', "$2", $file_name);
                         $css_file = fopen($file_name, 'w');
                         foreach($text as $string) {
                                 fwrite($css_file, $string);
-                                echo $string.'<br />';
+                                //echo $string.'<br />';
                         }
+                        return true;
                 } else {
                         echo "File \"$file_name\" not found!";
                 }
