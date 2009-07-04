@@ -110,18 +110,17 @@ class css_converter {
         function css_standardizer($text) {
                 $i = 0;
                 foreach($text as $key => $str) {
-                        if(preg_match_all("/['|\"](.*)['|\"]/U", $str, $temp_vars, PREG_SET_ORDER)){
-                                foreach($temp_vars as $vars){
-                                        $this->strings[$i] = $vars[0];
-                                        $temp = preg_quote($vars[1]);
-                                        $text[$key] = preg_replace("/(['|\"])$temp(['|\"])/U", "temp_strings[$i]", $text[$key],1);
-                                        $i++;
-                                }
-                        }
-                        if(preg_match_all("/url\((.*)\)/U", $str, $temp_vars, PREG_SET_ORDER)){
+                        if(preg_match_all("/url\((.*)\)/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
                                 foreach($temp_vars as $vars){
                                         $this->strings[$i] = $vars[0];
                                         $text[$key] = preg_replace("/url\((.*)\)/U", "temp_strings[$i]", $text[$key],1);
+                                        $i++;
+                                }
+                        }
+                        if(preg_match_all("/['|\"](.*)['|\"]/U", $text[$key], $temp_vars, PREG_SET_ORDER)){
+                                foreach($temp_vars as $vars){
+                                        $this->strings[$i] = $vars[0];
+                                        $text[$key] = preg_replace("/(['|\"])(.*)(['|\"])/U", "temp_strings[$i]", $text[$key],1);
                                         $i++;
                                 }
                         }
@@ -357,10 +356,12 @@ class css_converter {
                 foreach($newtext as $key => $str) {
                         $newtext[$key] = preg_replace('/\s+/', ' ', $newtext[$key]);
                         $newtext[$key] = preg_replace('/\s,/', ',', $newtext[$key]);
-                        if(preg_match("/temp_strings\[$i\]/", $newtext[$key])){
-                                $temp = $this->strings[$i];
-                                $newtext[$key] = preg_replace("/temp_strings\[$i\]/", "$temp", $newtext[$key]);
-                                $i++;
+                        if(preg_match_all('/temp_strings/', $newtext[$key], $temp_vars, PREG_SET_ORDER)){
+                                foreach($temp_vars as $vars){
+                                        $temp = preg_quote($this->strings[$i]);
+                                        $newtext[$key] = preg_replace("/temp_strings\[$i\]/", "$temp", $newtext[$key],1);
+                                        $i++;
+                                }
                         }
                         $newtext[$key].="\n";
                 }
