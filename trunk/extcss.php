@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Ext CSS Converter
  * Copyright (c) 2009 Nikolai Gerasimov
@@ -358,8 +358,9 @@ class css_converter {
                         $newtext[$key] = preg_replace('/\s,/', ',', $newtext[$key]);
                         if(preg_match_all('/temp_strings/', $newtext[$key], $temp_vars, PREG_SET_ORDER)){
                                 foreach($temp_vars as $vars){
-                                        $temp = preg_quote($this->strings[$i]);
-                                        $newtext[$key] = preg_replace("/temp_strings\[$i\]/", "$temp", $newtext[$key],1);
+                                        $temp = $this->strings[$i];
+                                        $temp = preg_replace('/\\\\[0-9abcdef]{4,4}/',"\\\\$0",$temp);
+                                        $newtext[$key] = preg_replace("/temp_strings\[$i\]/", $temp, $newtext[$key],1);
                                         $i++;
                                 }
                         }
