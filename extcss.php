@@ -331,7 +331,6 @@ class css_converter {
                 foreach($temp_s as $sname) {
                         foreach($temp_p as $pname) {
                                 if(preg_match('/&:/', $sname)) {
-                                        $sname = preg_replace('/(\s*)&:/', ':', $sname);
                                         $pname = rtrim($pname);
                                         $name .= $pname.$sname.', ';
                                 } else {
@@ -340,7 +339,8 @@ class css_converter {
                         }
                 }
                 preg_match_all('/(.*),/', $name, $temp, PREG_SET_ORDER);
-                return $temp[0][1];
+				$temp = preg_replace('/(\s*)&:/', ':', $temp[0][1]);
+                return $temp;
         }
 
         function css_cleaning($text) {
