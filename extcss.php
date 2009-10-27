@@ -332,15 +332,14 @@ class css_converter {
                         foreach($temp_p as $pname) {
                                 if(preg_match('/&:/', $sname)) {
                                         $pname = rtrim($pname);
-                                        $name .= $pname.$sname.', ';
+                                        $name .= $pname.preg_replace('/(\s*)&:/', ':', $sname).', ';
                                 } else {
                                         $name .= $pname.' '.$sname.', ';
                                 }
                         }
                 }
                 preg_match_all('/(.*),/', $name, $temp, PREG_SET_ORDER);
-				$temp = preg_replace('/(\s*)&:/', ':', $temp[0][1]);
-                return $temp;
+                return $temp[0][1];
         }
 
         function css_cleaning($text) {
@@ -352,16 +351,14 @@ class css_converter {
                                 $i++;
                         }
                 }
-                $i = 0;
                 foreach($newtext as $key => $str) {
                         $newtext[$key] = preg_replace('/\s+/', ' ', $newtext[$key]);
                         $newtext[$key] = preg_replace('/\s,/', ',', $newtext[$key]);
-                        if(preg_match_all('/temp_strings/', $newtext[$key], $temp_vars, PREG_SET_ORDER)){
+                        if(preg_match_all('/temp_strings\[(.*)\]/U', $newtext[$key], $temp_vars, PREG_SET_ORDER)){
                                 foreach($temp_vars as $vars){
-                                        $temp = $this->strings[$i];
+                                        $temp = $this->strings[$vars[1]];
                                         $temp = preg_replace('/\\\\[0-9abcdef]{4,4}/',"\\\\$0",$temp);
-                                        $newtext[$key] = preg_replace("/temp_strings\[$i\]/", $temp, $newtext[$key],1);
-                                        $i++;
+                                        $newtext[$key] = preg_replace("/temp_strings\[$vars[1]\]/", $temp, $newtext[$key],1);
                                 }
                         }
                         $newtext[$key].="\n";
